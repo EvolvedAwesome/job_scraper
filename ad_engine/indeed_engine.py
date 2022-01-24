@@ -8,6 +8,10 @@ import re
 import asyncio
 import aiohttp
 
+# Define an exception for a captcha appearing
+class CaptchaException(Exception):
+    pass
+
 PAGE_UPPER_LIMIT = 100
 # jobs?as_and=dvd&as_phr&as_any&as_not&as_ttl&as_cmp&jt=all&st&salary&radius=50&l&fromage=any&limit=10&sort&psf=advsrch&from=advancedsearch&
 
@@ -16,6 +20,7 @@ class IndeedEngine:
         # Test
         self.pages_re = re.compile("^Page ([0-9]*) of ([0-9]*) jobs")
         self.searchq = "Aboriginal Politics"
+        self.headers = {"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.97 Safari/537.36"}
 
     def get_query_string(self):
         return f"https://au.indeed.com/jobs?q={self.searchq}"
@@ -28,6 +33,7 @@ class IndeedEngine:
         return BeautifulSoup(content, 'html.parser')
 
     def get_n_jobs(self, soup):
+        print(soup)
         pages_text = soup.find('div', id="searchCountPages").get_text().replace(",", "").strip()
         return int(self.pages_re.match(pages_text).group(2))
 
@@ -46,6 +52,8 @@ class IndeedEngine:
 
         if "did not match any jobs" in soup.get_text():
             return 0
+        elif "hCaptcha" in soup.get_text():
+            raise CaptchaException("hCaptcha block present on page.")
 
         n_pages = ceil(self.get_n_jobs(soup) / 10)
         
@@ -55,7 +63,7 @@ class IndeedEngine:
         return n_pages
 
     async def process_ad_pages(self, listing_list, page_n):
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(headers=self.headers) as session:
             resp = await session.get(self.generate_n_page_uri(page_n))
             content = await resp.text()
             soup = BeautifulSoup(content, 'html.parser')
@@ -66,7 +74,7 @@ class IndeedEngine:
         return f"https://au.indeed.com/viewjob?jk={listing_code}"
 
     async def process_listing_data(self, listing_dict, listing_code):
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(headers=self.headers) as session:
             resp = await session.get(self.listing_uri_from_code(listing_code))
             content = await resp.text()
             soup = BeautifulSoup(content, 'html.parser')
@@ -89,6 +97,7 @@ class IndeedEngine:
         await asyncio.gather(*[self.process_listing_data(listings_dict, listing_n) for listing_n in listings_dict.keys()])
         
         df = pd.DataFrame.from_dict(listings_dict, orient='index')
+        return df
 
 if __name__ == "__main__":
     ie = IndeedEngine()

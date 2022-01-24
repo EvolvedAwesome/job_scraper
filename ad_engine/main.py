@@ -5,6 +5,7 @@ import io
 
 from adzuna_engine import AdzunaEngine
 from indeed_engine import IndeedEngine
+from indeed_engine import CaptchaException
 
 # incl_all, incl_exact, incl_at_least_one, excl_words, incl_title, salary_lower, salary_higher, employment_hours, contract_type, results_pp
 # https://www.adzuna.com.au/search?adv=1&qwd={incl_all}&qph={incl_exact}&qor={incl_at_least_one}&qxl=excl_words&qtl=in_title&sf=5000&st=140000&cty=permanent&cti=full_time&w=Australia&pp=50&sb=date&sd=down
@@ -46,11 +47,15 @@ async def ind_search_incl_title_terms(terms: str):
     indeed_engine.searchq = terms
 
     # Pagination
-    n_pages = indeed_engine.get_query_pages()
+    try:
+        n_pages = indeed_engine.get_query_pages()
+    except CaptchaException as e:
+        return {"status" : False, 
+            "message" : str(e)}
 
     if n_pages == 0:
         return {"status" : False, 
-        "message" : "No jobs found for that query"}
+            "message" : "No jobs found for that query"}
 
     # Data structures
     listing_list = [] 
