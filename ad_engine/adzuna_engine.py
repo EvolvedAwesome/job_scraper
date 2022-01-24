@@ -78,10 +78,19 @@ class AdzunaEngine:
             content = await resp.text()
             soup = BeautifulSoup(content, 'html.parser')
 
+            # If adzuna directs us to a 404, which it seems to from time to time,
+            # just ignore it and continue our knitting.
+            if "We cannot find the page you're looking for. You could try one of these links" in soup.get_text():
+                return
+
             # Collect the data 
             data_dict = {}
             data_dict['title'] = soup.find('h1').string
-            data_dict['description'] = soup.find('section', attrs={'class':'text-sm'}).get_text()
+            try:
+                data_dict['description'] = soup.find('section', class_='text-sm').text
+            except AttributeError as e:
+                print(AttributeError, soup)
+                raise AttributeError
 
             # Arbitary column data 
             table = soup.find('table')
