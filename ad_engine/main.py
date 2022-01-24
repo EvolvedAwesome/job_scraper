@@ -68,3 +68,4 @@ async def ind_search_incl_title_terms(terms: str):
     response.headers["Content-Disposition"] = "attachment; filename=export.csv"
 
     return response 
+    
