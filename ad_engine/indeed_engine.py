@@ -33,7 +33,6 @@ class IndeedEngine:
         return BeautifulSoup(content, 'html.parser')
 
     def get_n_jobs(self, soup):
-        print(soup)
         pages_text = soup.find('div', id="searchCountPages").get_text().replace(",", "").strip()
         return int(self.pages_re.match(pages_text).group(2))
 
@@ -56,9 +55,9 @@ class IndeedEngine:
             raise CaptchaException("hCaptcha block present on page.")
 
         n_pages = ceil(self.get_n_jobs(soup) / 10)
-        
+
         if n_pages > PAGE_UPPER_LIMIT: # 1000 records upper limit
-            return PAGE_UPPER_LIMIT 
+            return PAGE_UPPER_LIMIT
 
         return n_pages
 
@@ -68,7 +67,7 @@ class IndeedEngine:
             content = await resp.text()
             soup = BeautifulSoup(content, 'html.parser')
 
-            listing_list += self.get_page_job_ids(soup) 
+            listing_list += self.get_page_job_ids(soup)
 
     def listing_uri_from_code(self, listing_code):
         return f"https://au.indeed.com/viewjob?jk={listing_code}"
@@ -78,15 +77,40 @@ class IndeedEngine:
             resp = await session.get(self.listing_uri_from_code(listing_code))
             content = await resp.text()
             soup = BeautifulSoup(content, 'html.parser')
+        
+            # Run the hcaptcha check every page we access
+            if "hCaptcha" in soup.get_text():
+                raise CaptchaException("hCaptcha block present on page.")
 
-            # Collect the data 
+            # Collect the data
             data_dict = {}
+
             data_dict['title'] = soup.find('h1', attrs={'class':'jobsearch-JobInfoHeader-title'}).string
+
             data_dict['description'] = soup.find('div', id="jobDescriptionText").get_text()
-            data_dict['company'] = "" if (r := soup.find('div', attrs={'class':'jobsearch-InlineCompanyRating'}).string) is None else r
-            data_dict['job_details'] = "" if (r := soup.find('span', attrs={'class':'jobsearch-JobMetadataHeader-item'}).string) is None else r
-            data_dict['position_details'] = "" if (r := soup.find('div', attrs={'class':'jobsearch-JobInfoHeader-subtitle'}).string) is None else r
-            #data_dict['company'] = soup.find('a', attrs={'href', re.compile("^https://au\.indeed\.com/cmp/.*")}).get_text()
+
+            # Employer information (name + location)
+            r = soup.find('div', class_='jobsearch-CompanyInfoContainer')
+            if r is not None:
+                data_dict['employer'] = s.text if (s := r.find("a")) is not None else r.find('div', 'jobsearch-InlineCompanyRating').text
+                data_dict['location'] = ' '.join([f.text for f in r.find('div', 'jobsearch-JobInfoHeader-subtitle').find_all('div', attrs={'class': None})])
+            else:
+                data_dict['employer'] = None
+                data_dict['location'] = None
+            data_dict['job_details'] = "" if (r := soup.find('span', class_='jobsearch-JobMetadataHeader-item')) is None else r.text
+
+            # Position details
+            pdetails = soup.find('div', class_='jobsearch-JobMetadataHeader-item').find_all('span')
+
+            if len(pdetails) == 1:
+                data_dict['employment_type'] = pdetails[0].text
+                data_dict['salary'] = ""
+            elif len(pdetails) == 2:
+                data_dict['employment_type'] = pdetails[1].text.replace("-",'').strip()
+                data_dict['salary'] = pdetails[0].text
+            else:
+                data_dict['employment_type'] = ""
+                data_dict['salary'] = ""
 
             # Add a URL
             data_dict['url'] = self.listing_uri_from_code(listing_code)
@@ -95,10 +119,10 @@ class IndeedEngine:
 
     async def collate_data(self, listings_dict, listing_list, n_pages):
         await asyncio.gather(*[self.process_ad_pages(listing_list, n) for n in range(1, n_pages+1)])
-        
+
         listings_dict = { l:{} for l in listing_list }
         await asyncio.gather(*[self.process_listing_data(listings_dict, listing_n) for listing_n in listings_dict.keys()])
-        
+
         df = pd.DataFrame.from_dict(listings_dict, orient='index')
         return df
 
@@ -112,6 +136,8 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     df = loop.run_until_complete(ie.collate_data(listings_dict, listing_list, n_pages))
 
+    # Output to CSV for testing/development
     print(df)
+    df.to_csv("docco.csv")
 
     loop.close()
