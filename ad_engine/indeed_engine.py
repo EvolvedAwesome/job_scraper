@@ -97,8 +97,7 @@ class IndeedEngine:
             else:
                 data_dict['employer'] = None
                 data_dict['location'] = None
-            data_dict['job_details'] = "" if (r := soup.find('span', class_='jobsearch-JobMetadataHeader-item')) is None else r.text
-
+            
             # Position details
             pdetails = soup.find('div', class_='jobsearch-JobMetadataHeader-item').find_all('span')
 
