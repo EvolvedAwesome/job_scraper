@@ -99,17 +99,21 @@ class IndeedEngine:
                 data_dict['location'] = None
             
             # Position details
-            pdetails = soup.find('div', class_='jobsearch-JobMetadataHeader-item').find_all('span')
+            data_dict['employment_type'] = ""
+            data_dict['salary'] = ""
 
-            if len(pdetails) == 1:
-                data_dict['employment_type'] = pdetails[0].text
-                data_dict['salary'] = ""
-            elif len(pdetails) == 2:
-                data_dict['employment_type'] = pdetails[1].text.replace("-",'').strip()
-                data_dict['salary'] = pdetails[0].text
-            else:
-                data_dict['employment_type'] = ""
-                data_dict['salary'] = ""
+            if (r := soup.find('div', class_='jobsearch-JobMetadataHeader-item')) is not None:
+                pdetails = r.find_all('span')
+
+                if len(pdetails) == 1:
+                    content = pdetails[0].text
+                    if "$" in content: 
+                        data_dict['salary'] = pdetails[0].text
+                    else:
+                        data_dict['employment_type'] = pdetails[0].text
+                elif len(pdetails) == 2:
+                    data_dict['employment_type'] = pdetails[1].text.replace("-",'').strip()
+                    data_dict['salary'] = pdetails[0].text
 
             # Add a URL
             data_dict['url'] = self.listing_uri_from_code(listing_code)
