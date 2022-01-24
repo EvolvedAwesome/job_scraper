@@ -83,6 +83,9 @@ class IndeedEngine:
             data_dict = {}
             data_dict['title'] = soup.find('h1', attrs={'class':'jobsearch-JobInfoHeader-title'}).string
             data_dict['description'] = soup.find('div', id="jobDescriptionText").get_text()
+            data_dict['company'] = "" if (r := soup.find('div', attrs={'class':'jobsearch-InlineCompanyRating'}).string) is None else r
+            data_dict['job_details'] = "" if (r := soup.find('span', attrs={'class':'jobsearch-JobMetadataHeader-item'}).string) is None else r
+            data_dict['position_details'] = "" if (r := soup.find('div', attrs={'class':'jobsearch-JobInfoHeader-subtitle'}).string) is None else r
             #data_dict['company'] = soup.find('a', attrs={'href', re.compile("^https://au\.indeed\.com/cmp/.*")}).get_text()
 
             # Add a URL
@@ -107,5 +110,8 @@ if __name__ == "__main__":
     n_pages = ie.get_query_pages()
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(ie.collate_data(listings_dict, listing_list, n_pages))
+    df = loop.run_until_complete(ie.collate_data(listings_dict, listing_list, n_pages))
+
+    print(df)
+
     loop.close()
