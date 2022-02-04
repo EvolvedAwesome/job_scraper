@@ -12,21 +12,39 @@ import aiohttp
 class CaptchaException(Exception):
     pass
 
-PAGE_UPPER_LIMIT = 100
+PAGE_UPPER_LIMIT = 10 
 # jobs?as_and=dvd&as_phr&as_any&as_not&as_ttl&as_cmp&jt=all&st&salary&radius=50&l&fromage=any&limit=10&sort&psf=advsrch&from=advancedsearch&
+
+#jobs?as_and=all_these&as_phr=exact_this&as_any=at_least_one&as_not=none_of&as_ttl=title_search&as_cmp=from_company&jt=fulltime&st=&salary=&radius=50&l=&fromage=any&limit=50&sort=&psf=advsrch&from=advancedsearch
 
 class IndeedEngine:
     def __init__(self):
         # Test
         self.pages_re = re.compile("^Page ([0-9]*) of ([0-9]*) jobs")
-        self.searchq = "Aboriginal Politics"
         self.headers = {"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.97 Safari/537.36"}
+        self.query_contents = {
+            'psf':'advsrch', # Specify an advanced search
+            'from':'advancedsearch', # Specify an advanced search
+            'as_and': None, # all of these terms
+            'as_phr': None, # exactly these terms
+            'as_any': None, # at least once of these
+            'as_not': None, # none of these
+            'as_ttl': None, # title search
+            'as_cmp': None, # From company
+            'jt': None, # "JobType" - fulltime, parttime, casual, contract
+            'limit': 50, # Max page limit
+            'start': 0, # n to start reading jobs from
+        }
 
-    def get_query_string(self):
-        return f"https://au.indeed.com/jobs?q={self.searchq}"
+    def get_query_string(self, query_contents):
+        uri = "https://au.indeed.com/jobs?"
+        for query_tuple in query_contents.items():
+            if query_tuple[1] is not None:
+                uri += f"{query_tuple[0]}={query_tuple[1]}&"
+        return uri
 
     def sync_query_indeed(self):
-        return requests.get(self.get_query_string())
+        return requests.get(self.get_query_string(self.query_contents))
 
     def get_query_soup(self):
         content = self.sync_query_indeed().text
@@ -37,10 +55,8 @@ class IndeedEngine:
         return int(self.pages_re.match(pages_text).group(2))
 
     def generate_n_page_uri(self, page_n):
-        # This indeed CMS seems to start at pg1 -> page=0, pg2 -> page=10, pg3 -> page=20
-        # So page = (page_n - 1)*10
-        base_uri = self.get_query_string()
-        return base_uri + f"&start={int((page_n-1)*10)}"
+        self.query_contents['start'] = int(self.query_contents['limit'])*page_n
+        return self.get_query_string(self.query_contents)
 
     def get_page_job_ids(self, soup):
         jobs = soup.find_all('a', id=re.compile('^job_'))
@@ -54,7 +70,7 @@ class IndeedEngine:
         elif "hCaptcha" in soup.get_text():
             raise CaptchaException("hCaptcha block present on page.")
 
-        n_pages = ceil(self.get_n_jobs(soup) / 10)
+        n_pages = ceil(self.get_n_jobs(soup) / int(self.query_contents['limit']))
 
         if n_pages > PAGE_UPPER_LIMIT: # 1000 records upper limit
             return PAGE_UPPER_LIMIT
@@ -81,6 +97,9 @@ class IndeedEngine:
             # Run the hcaptcha check every page we access
             if "hCaptcha" in soup.get_text():
                 raise CaptchaException("hCaptcha block present on page.")
+
+            if "404" in soup.get_text():
+                return
 
             # Collect the data
             data_dict = {}
@@ -131,6 +150,7 @@ class IndeedEngine:
 
 if __name__ == "__main__":
     ie = IndeedEngine()
+    ie.query_contents['as_ttl'] = "Aboriginal"
 
     listings_dict = {}
     listing_list = []
