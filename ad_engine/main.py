@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, RedirectResponse
 from typing import Optional, Literal, Union
 import io
 from datetime import date
@@ -8,30 +8,42 @@ from adzuna_engine import AdzunaEngine
 from indeed_engine import IndeedEngine
 from indeed_engine import CaptchaException
 
-app = FastAPI()
+app = FastAPI(
+    title="Job board scraper",
+    description="An API for scraping jobs from the Indeed and Adzuna job boards and exporting their info in CSV format",
+    version="1.0.0",
+    contact={
+        "name": "Folded Studio",
+        "email": "office@folded.co.nz",
+    }
+)
 
-@app.get("/export")
-async def adz_search_incl_title_terms(
-        site: Literal['adzuna', 'indeed'] = 'adzuna',
-        focus: Literal['title', 'all'] =  'title',
-        terms: str = 'Aboriginal Politics',
-        exact: Literal['true', 'false'] = 'false'
+@app.get("/", include_in_schema=False)
+async def docs_redirect():
+    return RedirectResponse(url='/docs')
+
+@app.get("/search")
+async def job_search(
+        job_board: Literal['Adzuna', 'Indeed'] = 'Adzuna',
+        search_just_title_or_title_and_description: Literal['just_title', 'title_and_description'] =  'just_title',
+        search_terms: str = 'Aboriginal Politics',
+        results_must_include_every_term: Literal['true', 'false'] = 'false'
 ):
-    if site == 'adzuna':
+    if job_board == 'Adzuna':
         # Generate a new adzuna_engine instance
         adzuna_engine = AdzunaEngine()
 
-        if focus == 'title':
-            # This is where we define how the search terms are matched to the jobs in the adzuna database
-            adzuna_engine.query_contents['qtl'] = terms
+        if search_just_title_or_title_and_description == 'just_title':
+            # This is where we define how the search search_terms are matched to the jobs in the adzuna database
+            adzuna_engine.query_contents['qtl'] = search_terms
         else:
-            # This is where we define how the search terms are matched to the jobs in the adzuna database
-            if exact == 'true':
-                # This is where we define how the search terms are matched to the jobs in the adzuna database
-                adzuna_engine.query_contents['qph'] = terms
+            # This is where we define how the search search_terms are matched to the jobs in the adzuna database
+            if results_must_include_every_term == 'true':
+                # This is where we define how the search search_terms are matched to the jobs in the adzuna database
+                adzuna_engine.query_contents['qph'] = search_terms
             else:
-                # This is where we define how the search terms are matched to the jobs in the adzuna database
-                adzuna_engine.query_contents['qor'] = terms
+                # This is where we define how the search search_terms are matched to the jobs in the adzuna database
+                adzuna_engine.query_contents['qor'] = search_terms
 
         # Pagination
         n_pages = adzuna_engine.get_query_pages()
@@ -50,21 +62,21 @@ async def adz_search_incl_title_terms(
         # Run the queries
         output_df = await adzuna_engine.collate_data(listings_dict, listing_list, n_pages)
 
-    if site == 'indeed':
+    if job_board == 'Indeed':
         # Generate a new adzuna_engine instance
         indeed_engine = IndeedEngine()
 
-        if focus == 'title':
-            # This is where we define how the search terms are matched to the jobs in the adzuna database
-            indeed_engine.query_contents['as_ttl'] = terms
+        if search_just_title_or_title_and_description == 'just_title':
+            # This is where we define how the search search_terms are matched to the jobs in the adzuna database
+            indeed_engine.query_contents['as_ttl'] = search_terms
         else:
-            # This is where we define how the search terms are matched to the jobs in the adzuna database
-            if exact == 'true':
-                # This is where we define how the search terms are matched to the jobs in the adzuna database
-                indeed_engine.query_contents['as_and'] = terms
+            # This is where we define how the search search_terms are matched to the jobs in the adzuna database
+            if results_must_include_every_term == 'true':
+                # This is where we define how the search search_terms are matched to the jobs in the adzuna database
+                indeed_engine.query_contents['as_and'] = search_terms
             else:
-                # This is where we define how the search terms are matched to the jobs in the adzuna database
-                indeed_engine.query_contents['as_any'] = terms
+                # This is where we define how the search search_terms are matched to the jobs in the adzuna database
+                indeed_engine.query_contents['as_any'] = search_terms
 
 
         # Pagination
