@@ -83,6 +83,9 @@ class IndeedEngine:
             content = await resp.text()
             soup = BeautifulSoup(content, 'html.parser')
 
+            if "hCaptcha" in soup.get_text():
+                raise CaptchaException("hCaptcha block present on page.")
+
             listing_list += self.get_page_job_ids(soup)
 
     def listing_uri_from_code(self, listing_code):
