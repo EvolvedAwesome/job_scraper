@@ -107,7 +107,11 @@ class IndeedEngine:
             # Collect the data
             data_dict = {}
 
-            data_dict['title'] = (soup.find('h1', attrs={'class':'jobsearch-JobInfoHeader-title'}) | '').string
+            title = soup.find('h1', attrs={'class':'jobsearch-JobInfoHeader-title'})
+            if title is not None:
+                data_dict['title'] = title.string
+            else:
+                data_dict['title'] = ''
 
             data_dict['description'] = soup.find('div', id="jobDescriptionText").get_text()
 
