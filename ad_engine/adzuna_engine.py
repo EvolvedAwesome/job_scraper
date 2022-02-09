@@ -43,7 +43,7 @@ class AdzunaEngine:
         return BeautifulSoup(r.content, "html.parser")
 
     def get_n_jobs(self, soup):
-        return int(soup.find("div", class_="ui-search-heading").find("span").string)
+        return int(float(soup.find("div", class_="ui-search-heading").find("span").string.replace(',','')))
 
     def get_query_pages(self):
         q_uri = self.search_query(self.query_contents)

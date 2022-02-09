@@ -107,7 +107,7 @@ class IndeedEngine:
             # Collect the data
             data_dict = {}
 
-            data_dict['title'] = soup.find('h1', attrs={'class':'jobsearch-JobInfoHeader-title'}).string
+            data_dict['title'] = (soup.find('h1', attrs={'class':'jobsearch-JobInfoHeader-title'}) | '').string
 
             data_dict['description'] = soup.find('div', id="jobDescriptionText").get_text()
 
