@@ -36,7 +36,7 @@ class IndeedEngine:
             'start': 0, # n to start reading jobs from
         }
 
-    def get_query_string(self, query_contents):
+    def get_query_uri(self, query_contents):
         uri = "https://au.indeed.com/jobs?"
         for query_tuple in query_contents.items():
             if query_tuple[1] is not None:
@@ -44,7 +44,7 @@ class IndeedEngine:
         return uri
 
     def sync_query_indeed(self):
-        return requests.get(self.get_query_string(self.query_contents))
+        return requests.get(self.get_query_uri(self.query_contents))
 
     def get_query_soup(self):
         content = self.sync_query_indeed().text
@@ -56,7 +56,7 @@ class IndeedEngine:
 
     def generate_n_page_uri(self, page_n):
         self.query_contents['start'] = int(self.query_contents['limit'])*page_n
-        return self.get_query_string(self.query_contents)
+        return self.get_query_uri(self.query_contents)
 
     def get_page_job_ids(self, soup):
         jobs = soup.find_all('a', id=re.compile('^job_'))
