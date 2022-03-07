@@ -10,6 +10,6 @@ COPY ./ad_engine /code/ad_engine
 
 WORKDIR /code/ad_engine
 
-EXPOSE 80
+EXPOSE 8080
 
-CMD ["uvicorn", "main:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "main:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "8080"]

@@ -83,6 +83,9 @@ class IndeedEngine:
             content = await resp.text()
             soup = BeautifulSoup(content, 'html.parser')
 
+            if "hCaptcha" in soup.get_text():
+                raise CaptchaException("hCaptcha block present on page.")
+
             listing_list += self.get_page_job_ids(soup)
 
     def listing_uri_from_code(self, listing_code):
@@ -104,7 +107,11 @@ class IndeedEngine:
             # Collect the data
             data_dict = {}
 
-            data_dict['title'] = soup.find('h1', attrs={'class':'jobsearch-JobInfoHeader-title'}).string
+            title = soup.find('h1', attrs={'class':'jobsearch-JobInfoHeader-title'})
+            if title is not None:
+                data_dict['title'] = title.string
+            else:
+                data_dict['title'] = ''
 
             data_dict['description'] = soup.find('div', id="jobDescriptionText").get_text()
 
