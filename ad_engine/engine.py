@@ -2,7 +2,7 @@ import asyncio
 import aiohttp
 from dataclasses import dataclass
 from math import ceil
-from typing import Dict, Optional, List, Union
+from typing import Callable, Dict, Optional, List, Union
 from bs4 import BeautifulSoup
 import pandas as pd
 
@@ -31,6 +31,9 @@ class Scraper_Engine:
     max_number_jobs: int = 500
     headers: Optional[str] = None
     client_session: Optional[ClientSession] = None
+    modify_query_for_page: Optional[Callable] = None
+    verify_page_contents: Optional[Callable] = None
+    check_if_no_results: Optional[Callable] = None
 
     def __post_init__(self):
         """Called after the dataclass init method.
@@ -42,8 +45,6 @@ class Scraper_Engine:
 
         assert self.get_listing_codes, "You need to define the implementation of self.get_listing_codes"
         assert self.get_job_data, "You need to define the implementation of self.get_job_data"
-        self._verify_page_contents_exists = callable(getattr(self, "verify_page_contents", None))
-        self._check_if_no_results_exists = callable(getattr(self, "check_if_no_results", None))
 
     async def __aenter__(self):
         if not self.client_session:
@@ -75,10 +76,10 @@ class Scraper_Engine:
         if response.status == 404:
             raise PageNotFoundException("Can't load the listings page, check the API url")
 
-        if self._verify_page_contents_exists: 
+        if self.verify_page_contents: 
             self.verify_page_contents(response, soup)
 
-        if self._check_if_no_results_exists: 
+        if self.check_if_no_results: 
             if self.check_if_no_results(soup):
                 return 0
 
@@ -88,18 +89,22 @@ class Scraper_Engine:
             return self._max_pages
         
         return n_pages
+    
+    def modify_query_for_page(self, query_contents, page_number, query_option):
+        query_contents[query_option] = page_number 
+        return query_contents
 
     async def process_listing_page(self, page_n: Union[str, int], query_option: str) -> List[str]:
         """Process a single job listing page and return 
         a list of job listing codes (listing_code).
         """
         modified_query = self.query_contents.copy()
-        modified_query[query_option] = page_n
+        modified_query = self.modify_query_for_page(self, modified_query, page_n, query_option)
 
         response = await self.client_session.get(self.get_query_uri(modified_query))
         soup = BeautifulSoup(await response.text(), "html.parser")
 
-        if self._verify_page_contents_exists: 
+        if self.verify_page_contents: 
             self.verify_page_contents(response, soup)
 
         return self.get_listing_codes(soup)
@@ -112,7 +117,7 @@ class Scraper_Engine:
         if response.status == 404:
             return
 
-        if self._verify_page_contents_exists: 
+        if self.verify_page_contents: 
             self.verify_page_contents(response, soup)
 
         return self.get_job_data(soup, listing_code)
