@@ -4,14 +4,12 @@ from typing import Optional, Literal, Union
 import io
 from datetime import date
 
-from adzuna_engine import AdzunaEngine
-from indeed_engine import IndeedEngine
-from indeed_engine import CaptchaException
+from job_engine import AdzunaEngine, IndeedEngine, CaptchaException
 
 app = FastAPI(
     title="Job board scraper",
     description="An API for scraping jobs from the Indeed and Adzuna job boards and exporting their info in CSV format",
-    version="1.0.0",
+    version="1.1.0",
     contact={
         "name": "Folded Studio",
         "email": "office@folded.co.nz",
@@ -46,7 +44,7 @@ async def job_search(
                 adzuna_engine.query_contents['qor'] = search_terms
 
         # Pagination
-        n_pages = adzuna_engine.get_query_pages()
+        n_pages = await adzuna_engine.get_number_of_pages()
 
         # No captcha systems to speak of here.
         if n_pages == 0:
@@ -55,14 +53,10 @@ async def job_search(
                 "message" : "No jobs found for that query"
             }
 
-        # Data structures
-        listing_list = []
-        listings_dict = {}
-
         # Run the queries
-        output_df = await adzuna_engine.collate_data(listings_dict, listing_list, n_pages)
+        output_df = await adzuna_engine.collate_data(n_pages)
 
-    if job_board == 'Indeed':
+    elif job_board == 'Indeed':
         # Generate a new adzuna_engine instance
         indeed_engine = IndeedEngine()
 
@@ -81,7 +75,7 @@ async def job_search(
 
         # Pagination
         try:
-            n_pages = indeed_engine.get_query_pages()
+            n_pages = await indeed_engine.get_number_of_pages()
         except CaptchaException as e:
             return {"status" : False,
                 "message" : str(e)}
@@ -90,12 +84,8 @@ async def job_search(
             return {"status" : False,
                 "message" : "No jobs found for that query"}
 
-        # Data structures
-        listing_list = []
-        listings_dict = {}
-
         # Run the queries
-        output_df = await indeed_engine.collate_data(listings_dict, listing_list, n_pages)
+        output_df = await indeed_engine.collate_data(n_pages)
 
     # Return a data stream
     response = StreamingResponse(io.StringIO(output_df.to_csv(index=False)), media_type="text/csv")

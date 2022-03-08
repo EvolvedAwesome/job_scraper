@@ -3,8 +3,6 @@ from typing import Dict, List, Union
 from bs4 import BeautifulSoup
 import re
 
-from numpy import number
-
 from engine import Scraper_Engine
 
 # incl_all, incl_exact, incl_at_least_one, excl_words, incl_title, salary_lower, salary_higher, employment_hours, contract_type, results_pp

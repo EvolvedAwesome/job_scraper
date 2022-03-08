@@ -11,6 +11,10 @@ from aiohttp import ClientSession
 class PageNotFoundException(Exception):
     pass
 
+# Define an exception for a captcha appearing
+class CaptchaException(Exception):
+    pass
+
 @dataclass
 class Scraper_Engine:
     """Prototype class of the scraper engine which should be extended

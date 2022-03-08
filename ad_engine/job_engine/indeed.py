@@ -1,11 +1,8 @@
 import re
 import asyncio
 
-from engine import Scraper_Engine
+from engine import Scraper_Engine, CaptchaException
 
-# Define an exception for a captcha appearing
-class CaptchaException(Exception):
-    pass
 
 # jobs?as_and=dvd&as_phr&as_any&as_not&as_ttl&as_cmp&jt=all&st&salary&radius=50&l&fromage=any&limit=10&sort&psf=advsrch&from=advancedsearch&
 
