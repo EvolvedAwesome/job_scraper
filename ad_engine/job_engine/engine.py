@@ -103,7 +103,7 @@ class Scraper_Engine:
         a list of job listing codes (listing_code).
         """
         modified_query = self.query_contents.copy()
-        modified_query = self.modify_query_for_page(self, modified_query, page_n, query_option)
+        modified_query = self.modify_query_for_page(modified_query, page_n, query_option)
 
         response = await self.client_session.get(self.get_query_uri(modified_query))
         soup = BeautifulSoup(await response.text(), "html.parser")
@@ -118,7 +118,7 @@ class Scraper_Engine:
         soup = BeautifulSoup(await response.text(), "html.parser")
 
         # Non fatal 404 error
-        if response.status == 404:
+        if response.status == 404 or response.status == 500 or "Internal server error" in soup.get_text():
             return
 
         if self.verify_page_contents: 

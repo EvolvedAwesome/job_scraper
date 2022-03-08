@@ -4,7 +4,7 @@ from typing import Optional, Literal, Union
 import io
 from datetime import date
 
-from job_engine import AdzunaEngine, IndeedEngine, CaptchaException
+from job_engine import AdzunaEngine, IndeedEngine, SeekEngine, CaptchaException
 
 app = FastAPI(
     title="Job board scraper",
@@ -29,63 +29,75 @@ async def job_search(
 ):
     if job_board == 'Adzuna':
         # Generate a new adzuna_engine instance
-        adzuna_engine = AdzunaEngine()
+        async with AdzunaEngine() as adzuna_engine: 
 
-        if search_just_title_or_title_and_description == 'just_title':
-            # This is where we define how the search search_terms are matched to the jobs in the adzuna database
-            adzuna_engine.query_contents['qtl'] = search_terms
-        else:
-            # This is where we define how the search search_terms are matched to the jobs in the adzuna database
-            if results_must_include_every_term == 'true':
+            if search_just_title_or_title_and_description == 'just_title':
                 # This is where we define how the search search_terms are matched to the jobs in the adzuna database
-                adzuna_engine.query_contents['qph'] = search_terms
+                adzuna_engine.query_contents['qtl'] = search_terms
             else:
                 # This is where we define how the search search_terms are matched to the jobs in the adzuna database
-                adzuna_engine.query_contents['qor'] = search_terms
+                if results_must_include_every_term == 'true':
+                    # This is where we define how the search search_terms are matched to the jobs in the adzuna database
+                    adzuna_engine.query_contents['qph'] = search_terms
+                else:
+                    # This is where we define how the search search_terms are matched to the jobs in the adzuna database
+                    adzuna_engine.query_contents['qor'] = search_terms
 
-        # Pagination
-        n_pages = await adzuna_engine.get_number_of_pages()
+            # Pagination
+            n_pages = await adzuna_engine.get_number_of_pages()
 
-        # No captcha systems to speak of here.
-        if n_pages == 0:
-            return {
-                "status" : False,
-                "message" : "No jobs found for that query"
-            }
+            # No captcha systems to speak of here.
+            if n_pages == 0:
+                return {
+                    "status" : False,
+                    "message" : "No jobs found for that query"
+                }
 
-        # Run the queries
-        output_df = await adzuna_engine.collate_data(n_pages)
+            # Run the queries
+            output_df = await adzuna_engine.collate_data(n_pages)
 
     elif job_board == 'Indeed':
         # Generate a new adzuna_engine instance
-        indeed_engine = IndeedEngine()
+        async with IndeedEngine() as indeed_engine:
 
-        if search_just_title_or_title_and_description == 'just_title':
-            # This is where we define how the search search_terms are matched to the jobs in the adzuna database
-            indeed_engine.query_contents['as_ttl'] = search_terms
-        else:
-            # This is where we define how the search search_terms are matched to the jobs in the adzuna database
-            if results_must_include_every_term == 'true':
+            if search_just_title_or_title_and_description == 'just_title':
                 # This is where we define how the search search_terms are matched to the jobs in the adzuna database
-                indeed_engine.query_contents['as_and'] = search_terms
+                indeed_engine.query_contents['as_ttl'] = search_terms
             else:
                 # This is where we define how the search search_terms are matched to the jobs in the adzuna database
-                indeed_engine.query_contents['as_any'] = search_terms
+                if results_must_include_every_term == 'true':
+                    # This is where we define how the search search_terms are matched to the jobs in the adzuna database
+                    indeed_engine.query_contents['as_and'] = search_terms
+                else:
+                    # This is where we define how the search search_terms are matched to the jobs in the adzuna database
+                    indeed_engine.query_contents['as_any'] = search_terms
 
 
-        # Pagination
-        try:
-            n_pages = await indeed_engine.get_number_of_pages()
-        except CaptchaException as e:
-            return {"status" : False,
-                "message" : str(e)}
+            # Pagination
+            try:
+                n_pages = await indeed_engine.get_number_of_pages()
+            except CaptchaException as e:
+                return {"status" : False,
+                    "message" : str(e)}
 
-        if n_pages == 0:
-            return {"status" : False,
-                "message" : "No jobs found for that query"}
+            if n_pages == 0:
+                return {"status" : False,
+                    "message" : "No jobs found for that query"}
 
-        # Run the queries
-        output_df = await indeed_engine.collate_data(n_pages)
+            # Run the queries
+            output_df = await indeed_engine.collate_data(n_pages)
+
+    elif job_board == 'Seek':
+
+        async with SeekEngine(search_terms) as seek_engine:
+
+            n_pages = await seek_engine.get_number_of_pages()
+
+            if n_pages == 0:
+                return {"status" : False,
+                    "message" : "No jobs found for that query"}
+
+            output_df = await seek_engine.collate_data(n_pages)
 
     # Return a data stream
     response = StreamingResponse(io.StringIO(output_df.to_csv(index=False)), media_type="text/csv")
