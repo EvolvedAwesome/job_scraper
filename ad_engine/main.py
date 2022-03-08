@@ -22,7 +22,7 @@ async def docs_redirect():
 
 @app.get("/search")
 async def job_search(
-        job_board: Literal['Adzuna', 'Indeed'] = 'Adzuna',
+        job_board: Literal['Adzuna', 'Indeed', 'Seek'] = 'Adzuna',
         search_just_title_or_title_and_description: Literal['just_title', 'title_and_description'] =  'just_title',
         search_terms: str = 'Aboriginal Politics',
         results_must_include_every_term: Literal['true', 'false'] = 'false'
