@@ -98,7 +98,6 @@ async def __test_main__():
         ie.query_contents['as_ttl'] = "Aboriginal"
         number_pages = await ie.get_number_of_pages()
         df = await ie.collate_data(number_pages)
-        print(df)
 
 if __name__ == "__main__":
     asyncio.run(__test_main__())

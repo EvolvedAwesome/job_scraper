@@ -132,4 +132,4 @@ class Scraper_Engine:
         listing_codes = [l for page_listings in job_listings for l in page_listings if l]
         listing_data = await asyncio.gather(*[self.process_job_listing(listing_code) for listing_code in listing_codes])
 
-        return pd.DataFrame(listing_data)
+        return pd.DataFrame([listing for listing in listing_data if listing])
