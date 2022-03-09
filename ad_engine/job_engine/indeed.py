@@ -1,7 +1,7 @@
 import re
 import asyncio
 
-from engine import Scraper_Engine, CaptchaException
+from job_engine.engine import Scraper_Engine, CaptchaException
 
 
 # jobs?as_and=dvd&as_phr&as_any&as_not&as_ttl&as_cmp&jt=all&st&salary&radius=50&l&fromage=any&limit=10&sort&psf=advsrch&from=advancedsearch&

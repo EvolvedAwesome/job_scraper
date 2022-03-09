@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 import re
 import json 
 
-from engine import Scraper_Engine
+from job_engine.engine import Scraper_Engine
 
 @dataclass
 class JobData:
